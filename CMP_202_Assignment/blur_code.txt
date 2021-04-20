@@ -1,0 +1,21 @@
+
+//void generateFilter(Wrapper& x)
+//{
+//	​​
+//	float stDev = 1.0;
+//	float r = 2.0 * stDev * stDev;
+//	float s = 2.0 * stDev * stDev;
+//	float sum = 0.0;
+//	int radius = KERNEL_SIZE / 2;
+
+//	for (int i = -radius; i <= radius; i++)
+//	{
+//		​​
+//		r = fast_math::sqrt(i * i);
+//		x.filter1D[i + radius] = (fast_math::exp(-(r * r) / s)) / (3.1415 * s); // Gaussian equation
+//		sum += x.filter1D[i + radius];
+//	}​​
+
+//		for (int j = 0; j < KERNEL_SIZE; ++j)
+//			x.filter1D[j] /= sum; // normalisation
+//}​​

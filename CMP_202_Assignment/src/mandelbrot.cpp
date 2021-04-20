@@ -1,5 +1,4 @@
-// Mandelbrot set example
-// Adam Sampson <a.sampson@abertay.ac.uk>
+
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -16,6 +15,7 @@
 #include <iomanip>
 #include <amp.h>
 #include <amp_math.h>
+//#include <amp_graphics.h>
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -27,32 +27,23 @@ using std::cout;
 using std::endl;
 using std::ofstream;
 using namespace concurrency;
+//using namespace graphics;
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // GLOBALS
 std::ofstream timings("timings.csv");
 
-// For blur
-static const float filter[7][7] = {
-0.000904706,	0.003157733,	0.00668492,		0.008583607,	0.00668492,		0.003157733,	0.000904706,
-0.003157733,	0.01102157,		0.023332663,	0.029959733,	0.023332663,	0.01102157,		0.003157733,
-0.00668492,		0.023332663,	0.049395249,	0.063424755,	0.049395249,	0.023332663,	0.00668492,
-0.008583607,	0.029959733,	0.063424755,	0.081438997,	0.063424755,	0.029959733,	0.008583607,
-0.00668492,		0.023332663,	0.049395249,	0.063424755,	0.049395249,	0.023332663,	0.00668492,
-0.003157733,	0.01102157,		0.023332663,	0.029959733,	0.023332663,	0.01102157,		0.003157733,
-0.000904706,	0.003157733,	0.00668492,		0.008583607,	0.00668492,		0.003157733,	.000904706
-};
-
 // Get all accelerators available to us and store in a vector so we can extract details.
 std::vector<accelerator> accls = accelerator::get_all();
 
 // The size of the image to generate.
-const int WIDTH = 1920;
+const int WIDTH = 1024;
 const int HEIGHT = 1024;
 
 // The image data. Each pixel is represented as 0xRRGGBB.
 uint32_t image[HEIGHT][WIDTH];
+uint32_t blurImage[HEIGHT][WIDTH];
 
 // Define the alias "the_clock" for the clock type we're going to use.
 typedef std::chrono::steady_clock the_clock;
@@ -65,6 +56,25 @@ typedef std::chrono::steady_clock the_clock;
 // If you zoom into an area of the mandlebrot you will need to increase the palette size for better resolution of image.
 // Good rule of thumb is to keep this and the palette size the same number.
 const int MAX_ITERATIONS = 400;
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+constexpr int KERNEL_SIZE = 7;
+
+struct Filter
+{
+	// For blur
+	/*float filter[KERNEL_SIZE][KERNEL_SIZE] = {			{0.000904706,	0.003157733,	0.00668492,		0.008583607,	0.00668492,		0.003157733,	0.000904706},
+														{0.003157733,	0.01102157,		0.023332663,	0.029959733,	0.023332663,	0.01102157,		0.003157733},
+														{0.00668492,	0.023332663,	0.049395249,	0.063424755,	0.049395249,	0.023332663,	0.00668492},
+														{0.008583607,	0.029959733,	0.063424755,	0.081438997,	0.063424755,	0.029959733,	0.008583607},
+														{0.00668492,	0.023332663,	0.049395249,	0.063424755,	0.049395249,	0.023332663,	0.00668492},
+														{0.003157733,	0.01102157,		0.023332663,	0.029959733,	0.023332663,	0.01102157,		0.003157733},
+														{0.000904706,	0.003157733,	0.00668492,		0.008583607,	0.00668492,		0.003157733,	0.000904706} };*/
+
+	float filter[KERNEL_SIZE] = { 0.000904706,	0.003157733,	0.00668492,		0.008583607,	0.00668492,		0.003157733,	0.000904706 };
+
+};
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -111,7 +121,7 @@ Complex1 c_mul(Complex1 c1, Complex1 c2) restrict(cpu, amp)
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// Create a gradient band of colours.
+// Create a gradient band of colours to use to remove the banding in the mandlebrot.
 // Input: ratio is between 0 to 1
 // Output: rgb color
 
@@ -189,9 +199,9 @@ void write_tga(const char *filename)
 		for (int x = 0; x < WIDTH; ++x)
 		{
 			uint8_t pixel[3] = {
-				image[y][x] & 0xFF, // blue channel
-				(image[y][x] >> 8) & 0xFF, // green channel
-				(image[y][x] >> 16) & 0xFF, // red channel
+					blurImage[y][x] & 0xFF, // blue channel
+				(	blurImage[y][x] >> 8) & 0xFF, // green channel
+				(	blurImage[y][x] >> 16) & 0xFF, // red channel
 			};
 			outfile.write((const char *)pixel, 3);
 		}
@@ -224,64 +234,71 @@ void compute_mandelbrot_with_AMP(float left, float right, float top, float botto
 	array_view<unsigned int, 1> paletteArrView(palette.size(), palette);
 	arrView.discard_data();
 
-	parallel_for_each(arrView.extent, [=](concurrency::index<2> idx) restrict(amp)
-		{
-			/* compute Mandelbrot here i.e. Mandelbrot kernel/shader */
-
-			// USE THREAD ID / INDEX TO MAP INTO THE COMPLEX PLANE
-			/*
-			 Here we are setting the value of x and y to the value contained at the
-			 concurrency::index object idx index position at positions [0] and [1].
-
-			 This is representative of 1 pixel.
-			 We create 1 thread per pixel and so this happen concurrently for ALL
-			 pixels in the image size, and so the mandlebrot is calculated almost instantly.
-			*/
-			int y = idx[0];
-			int x = idx[1];
-
-			// Work out the point in the complex plane that
-			// corresponds to this pixel in the output image.
-			Complex1 c;
-			c.x = left + (x * (right - left) / WIDTH);
-			c.y = top + (y * (bottom - top) / HEIGHT);
-
-			// Start off z at (0, 0).
-			Complex1 z;
-			z.x = 0.0f;
-			z.y = 0.0f;
-
-			//Complex1 zEnd{};
-
-			// Iterate z = z^2 + c until z moves more than 2 units
-			// away from (0, 0), or we've iterated too many times.
-			int iterations = 0;
-			float escapeRadius = 2.0f;
-
-			while (c_abs(z) < escapeRadius && iterations < MAX_ITERATIONS)
+	try
+	{
+		parallel_for_each(arrView.extent, [=](concurrency::index<2> idx) restrict(amp)
 			{
-				//z = (z * z) + c;
-				z = c_mul(z, z);
-				z = c_add(z, c);
+				/* compute Mandelbrot here i.e. Mandelbrot kernel/shader */
 
-				++iterations;
-			}
+				// USE THREAD ID / INDEX TO MAP INTO THE COMPLEX PLANE
+				/*
+				 Here we are setting the value of x and y to the value contained at the
+				 concurrency::index object idx index position at positions [0] and [1].
 
-			if (iterations == MAX_ITERATIONS)
-			{
-				// z didn't escape from the circle.
-				// This point is in the Mandelbrot set.
-				arrView[idx] = 0x000000; // black
-			}
-			else
-			{
-				//float smoothedIndex = iterations - std::log(std::log(std::log(std::abs(z.real() * z.real() + z.imag() * z.imag())))) / std::log(2.0f);
-				unsigned int col = paletteArrView[iterations];
-				arrView[idx] = col;// (col * iterations) / MAX_ITERATIONS;
-			}
-		});
+				 This is representative of 1 pixel.
+				 We create 1 thread per pixel and so this happen concurrently for ALL
+				 pixels in the image size, and so the mandlebrot is calculated almost instantly.
+				*/
+				int y = idx[0];
+				int x = idx[1];
 
-	arrView.synchronize();
+				// Work out the point in the complex plane that
+				// corresponds to this pixel in the output image.
+				Complex1 c;
+				c.x = left + (x * (right - left) / WIDTH);
+				c.y = top + (y * (bottom - top) / HEIGHT);
+
+				// Start off z at (0, 0).
+				Complex1 z;
+				z.x = 0.0f;
+				z.y = 0.0f;
+
+				//Complex1 zEnd{};
+
+				// Iterate z = z^2 + c until z moves more than 2 units
+				// away from (0, 0), or we've iterated too many times.
+				int iterations = 0;
+				float escapeRadius = 2.0f;
+
+				while (c_abs(z) < escapeRadius && iterations < MAX_ITERATIONS)
+				{
+					//z = (z * z) + c;
+					z = c_mul(z, z);
+					z = c_add(z, c);
+
+					++iterations;
+				}
+
+				if (iterations == MAX_ITERATIONS)
+				{
+					// z didn't escape from the circle.
+					// This point is in the Mandelbrot set.
+					arrView[idx] = 0x000000; // black
+				}
+				else
+				{
+					//float smoothedIndex = iterations - std::log(std::log(std::log(std::abs(z.real() * z.real() + z.imag() * z.imag())))) / std::log(2.0f);
+					unsigned int col = paletteArrView[iterations];
+					arrView[idx] = col;// (col * iterations) / MAX_ITERATIONS;
+				}
+			});
+
+		arrView.synchronize();
+	}
+	catch (const concurrency::runtime_exception& ex)
+	{
+		MessageBoxA(NULL, ex.what(), "Error with mandlebrot without explicit tiling", MB_ICONERROR);
+	}	
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -295,129 +312,175 @@ void compute_mandelbrot_with_AMP_tiling(float left, float right, float top, floa
 
 	std::vector<unsigned int> palette = createPalette();
 
-	uint32_t* pImage = &(image[0][0]);
+	uint32_t* pImageIn = &(image[0][0]);
 
-	array_view<uint32_t, 2> arrView(HEIGHT, WIDTH, pImage);
+	array_view<uint32_t, 2> arrView(HEIGHT, WIDTH, pImageIn);
 	array_view<unsigned int, 1> paletteArrView(palette.size(), palette);
 	arrView.discard_data();
 
-	parallel_for_each(arrView.extent.tile<TS, TS>(), [=](tiled_index<TS, TS> t_idx) restrict(amp)
+	try
+	{
+		parallel_for_each(arrView.extent.tile<TS, TS>(), [=](tiled_index<TS, TS> t_idx) restrict(amp)
+			{
+				/* compute Mandelbrot here i.e. Mandelbrot kernel/shader */
+
+				int y = t_idx.global[0];		// The y component of the GPU's global coord system, ROW
+				int x = t_idx.global[1];		// The x component of the GPU's global coord system, COL
+
+				// So for 1920x1024, that gives us 1920/8 = 240 (x component) and 1024/8 = 128 (y component)
+				// So we have 240x128 = 30720 tiles with each tile is size 8x8 (8 threads by 8 threads), therefore each tile having 64 threads.
+				// 30,720 tiles x 64 threads = 1,966,080 threads
+				// Image dimensions HEIGHT(1920), WIDTH(1024)
+				// 1920x1024 = 1,966,080 pixels
+				// Therefore 1 thread per pixel. Tiled into groups of 64 threads.
+				// Here it seems I must have to pass the amount of tiles in x and y and NOT the TS
+				// But why does the lectures have TS in the Toy example?
+										 // Y	 X
+										 //ROW  COL
+				tile_static int tileValues[8][8];
+
+				// Missing something here?
+
+				// This is saying, set whatever thread we happen to be in LOCALLY in our tile,
+				// set it to the same thread that corrosponds GLOBALLY.
+				tileValues[t_idx.local[0]][t_idx.local[1]] = arrView[t_idx.global];
+
+				t_idx.barrier.wait();
+
+				// USE THREAD ID / INDEX TO MAP INTO THE COMPLEX PLANE
+				/*
+				 Here we are setting the value of x and y to the value contained at the
+				 concurrency::index object idx index position at positions [0] and [1].
+
+				 This is representative of 1 pixel.
+				 We create 1 thread per pixel and so this happen concurrently for ALL
+				 pixels in the image size, and so the mandlebrot is calculated almost instantly.
+				*/
+				/*int y = idx[0];
+				int x = idx[1];*/
+
+				// Work out the point in the complex plane that
+				// corresponds to this pixel in the output image.
+				Complex1 c{};
+				c.x = left + (x * (right - left) / WIDTH);
+				c.y = top + (y * (bottom - top) / HEIGHT);
+
+				// Start off z at (0, 0).
+				Complex1 z{};
+				z.x = 0.0f;
+				z.y = 0.0f;
+
+				// Iterate z = z^2 + c until z moves more than 2 units
+				// away from (0, 0), or we've iterated too many times.
+				int iterations = 0;
+				float escapeRadius = 2.0f;
+
+
+				while (c_abs(z) < escapeRadius && iterations < MAX_ITERATIONS)
+				{
+					//z = (z * z) + c;
+					z = c_mul(z, z);
+					z = c_add(z, c);
+
+					++iterations;
+				}
+
+				if (iterations == MAX_ITERATIONS)
+				{
+					// z didn't escape from the circle.
+					// This point is in the Mandelbrot set.
+					//tileValues[y][x] = 0x000000; // black
+					arrView[t_idx] = 0x000000; // black
+					//arrView[t_idx] = tileValues[y][x];
+				}
+				else
+				{
+					//float smoothedIndex = iterations - std::log(std::log(std::log(std::abs(z.real() * z.real() + z.imag() * z.imag())))) / std::log(2.0f);
+					unsigned int col = paletteArrView[iterations];
+					//tileValues[y][x] = col;
+
+					//arrView[t_idx] = tileValues[y][x];
+
+					arrView[t_idx] = col;// (col * iterations) / MAX_ITERATIONS;
+				}
+			});
+
+		arrView.synchronize();
+	}
+	catch (const concurrency::runtime_exception& ex)
+	{
+		MessageBoxA(NULL, ex.what(), "Error with mandlebrot with explicit tiling", MB_ICONERROR);
+	}
+
+	// ################################# END MANDLEBROT AND START BLUR #################################
+
+	uint32_t* pImageOut = &(blurImage[0][0]);
+
+	// For blur
+	Filter wrapper;
+	array_view<uint32_t, 2> arrViewIn(HEIGHT, WIDTH, pImageIn);
+	array_view<uint32_t, 2> arrViewOut(HEIGHT, WIDTH, pImageOut);
+
+	// PUT THIS IN A TRY CATCH ALSO!
+	// HORIZONTAL BLUR
+	parallel_for_each(arrViewIn.extent.tile<WIDTH, 1>(), [=](tiled_index<WIDTH, 1> t_idx) restrict(amp)
 		{
-			/* compute Mandelbrot here i.e. Mandelbrot kernel/shader */
-
-			int y = t_idx.global[0];		// The y component of the GPU's global coord system, ROW
-			int x = t_idx.global[1];		// The x component of the GPU's global coord system, COL
+			index<2> idx = t_idx.global;
 			
-			// So for 1920x1024, that gives us 1920/8 = 240 (x component) and 1024/8 = 128 (y component)
-			// So we have 240x128 = 30720 tiles with each tile is size 8x8 (8 threads by 8 threads), therefore each tile having 64 threads.
-			// 30,720 tiles x 64 threads = 1,966,080 threads
-			// Image dimensions HEIGHT(1920), WIDTH(1024)
-			// 1920x1024 = 1,966,080 pixels
-			// Therefore 1 thread per pixel. Tiled into groups of 64 threads.
-			// Here it seems I must have to pass the amount of tiles in x and y and NOT the TS
-			// But why does the lectures have TS in the Toy example?
-									 // Y	 X
-									 //ROW  COL
-			tile_static int tileValues[8][8];
-			
-			// Missing something here?
-
-			// This is saying, set whatever thread we happen to be in LOCALLY in our tile,
-			// set it to the same thread that corrosponds GLOBALLY.
-			tileValues[t_idx.local[0]][t_idx.local[1]] = arrView[t_idx.global];	
-
-			//tileValues[t_idx.local[0]][t_idx.local[1]] = arrView[y][x];
+			tile_static float horizontal_points[WIDTH][1];
+			horizontal_points[t_idx.local[0]][t_idx.local[1]] = arrViewIn[idx];
 
 			t_idx.barrier.wait();
 
-			// USE THREAD ID / INDEX TO MAP INTO THE COMPLEX PLANE
-			/*
-			 Here we are setting the value of x and y to the value contained at the
-			 concurrency::index object idx index position at positions [0] and [1].
+			// KERNEL_SIZE is the size of the filter matrix, (7x7) or (7x1)
+			// Whatever pixel we're at minus 3.
+			int textureLocationX = idx[0] - (KERNEL_SIZE / 2);
 
-			 This is representative of 1 pixel.
-			 We create 1 thread per pixel and so this happen concurrently for ALL
-			 pixels in the image size, and so the mandlebrot is calculated almost instantly.
-			*/
-			/*int y = idx[0];
-			int x = idx[1];*/
+			float pixelBlur = 0.0;
 
-			// Work out the point in the complex plane that
-			// corresponds to this pixel in the output image.
-			Complex1 c{};
-			c.x = left + (x * (right - left) / WIDTH);
-			c.y = top + (y * (bottom - top) / HEIGHT);
-
-			// Start off z at (0, 0).
-			Complex1 z{};
-			z.x = 0.0f;
-			z.y = 0.0f;
-
-			// Iterate z = z^2 + c until z moves more than 2 units
-			// away from (0, 0), or we've iterated too many times.
-			int iterations = 0;
-			float escapeRadius = 2.0f;
-
-
-			while (c_abs(z) < escapeRadius && iterations < MAX_ITERATIONS)
+			for (int i = 0; i < KERNEL_SIZE; ++i)
 			{
-				//z = (z * z) + c;
-				z = c_mul(z, z);
-				z = c_add(z, c);
-
-				++iterations;
-			}
-
-			if (iterations == MAX_ITERATIONS)
-			{
-				// z didn't escape from the circle.
-				// This point is in the Mandelbrot set.
-				//tileValues[y][x] = 0x000000; // black
-				arrView[t_idx] = 0x000000; // black
-				//arrView[t_idx] = tileValues[y][x];
-			}
-			else
-			{
-				//float smoothedIndex = iterations - std::log(std::log(std::log(std::abs(z.real() * z.real() + z.imag() * z.imag())))) / std::log(2.0f);
-				unsigned int col = paletteArrView[iterations];
-				//tileValues[y][x] = col;
-
-				//arrView[t_idx] = tileValues[y][x];
-
-				arrView[t_idx] = col;// (col * iterations) / MAX_ITERATIONS;
+				pixelBlur += horizontal_points[textureLocationX + i][idx[1]] * wrapper.filter[i];
+				t_idx.barrier.wait();
+				arrViewOut[idx] = pixelBlur;
 			}
 		});
 
-	arrView.synchronize();
+	arrViewOut.synchronize();
 
-	//// HORIZONTAL BLUR
-	//parallel_for_each(arrView.extent.tile<WIDTH, 1>(), [=](tiled_index<WIDTH, 1> t_idx) restrict(amp)
-	//	{
-	//		index<2> idx = t_idx.global;
+	//// Swap and then process the vertical strips next
+	std::swap(arrViewIn, arrViewOut);
 
-	//		tile_static float horizontal_points[WIDTH];
+	// PUT THIS IN A TRY CATCH ALSO!
+	// VERTICAL BLUR
+	// Our arrViewIn is now the half blurred image, only blurred in horizontal.
+	parallel_for_each(arrViewIn.extent.tile<1, HEIGHT>(), [=](tiled_index<1, HEIGHT> t_idx) restrict(amp)
+		{
+			index<2> idx = t_idx.global;
+			
+			//tile_static float vertical_points[HEIGHT];
+			tile_static float vertical_points[1][HEIGHT];
 
-	//		horizontal_points[idx[0]] = arrView[idx];
+			//vertical_points[idx[0]] = arrViewIn[idx];
+			vertical_points[t_idx.local[0]][t_idx.local[1]] = arrViewIn[idx];
 
-	//		t_idx.barrier.wait();
+			t_idx.barrier.wait();
 
-	//		int texturelocationX = idx[0] - (KERNEL_SIZE / 2);
+			int textureLocationY = idx[1] - (KERNEL_SIZE / 2);
 
-	//		float pixelBlur = 0.0;
+			float pixelBlur = 0.0;
 
-	//		for (int i = 0; i < KERNEL_SIZE; i++)
-	//		{
-	//			pixelBlur += horizontal_points[texturelocationX + i] * x.filter1D[i];
-	//		}
+			for (int i = 0; i < KERNEL_SIZE; ++i)
+			{
+				pixelBlur += vertical_points[idx[0]][textureLocationY + i] * wrapper.filter[i];
+				t_idx.barrier.wait();
+				arrViewOut[idx] = pixelBlur;
+			}
 
-	//		t_idx.barrier.wait();
-	//		b[idx] = pixelBlur;
-	//	});
+		});
 
-	//b.synchronize();
-
-	////swap and then process the vertical strips next 
-	//std::swap(a, b)
+	//The final sync which should now sync the fully blurred image back to the CPU.
+	arrViewOut.synchronize();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -449,7 +512,6 @@ void runMultipleTimingsNoExplicitTile()
 	}
 
 	std::cout << '\n';
-	//timings << '\n';
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -563,7 +625,7 @@ void list_accelerators()
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// query if AMP accelerator exists on hardware
+// Query if AMP accelerator exists on hardware.
 void query_AMP_support()
 {
 	std::vector<accelerator> accls = accelerator::get_all();
@@ -581,6 +643,7 @@ void query_AMP_support()
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+// Get blur to work in the other function first then look at putting it here.
 void blur()
 {
 	//parallel_for_each(a.extent.tile<WIDTH, 1>(),[=](concurrency::tiled_index<WIDTH, 1> t_idx) restrict(amp)
@@ -670,7 +733,7 @@ int main(int argc, char *argv[])
 	setUpCSV();
 
 	AMPWarmUp();
-	runMultipleTimingsNoExplicitTile();
+	//runMultipleTimingsNoExplicitTile();
 	runMultipleTimingsExplicitTile();
 	
 	// Write the final image that was generated to file for viewing.

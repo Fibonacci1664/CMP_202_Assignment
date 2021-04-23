@@ -1,5 +1,6 @@
 #include "Mandlebrot.h"
 #include "ComplexNum.h"
+#include "Filter.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -84,9 +85,9 @@ void Mandlebrot::write_tga(const char* filename)
 		{
 			// Write the final blurred image to file.
 			uint8_t pixel[3] = {
-					image[y][x] & 0xFF, // blue channel
-				(image[y][x] >> 8) & 0xFF, // green channel
-				(image[y][x] >> 16) & 0xFF, // red channel
+					blurImage[y][x] & 0xFF, // blue channel
+				(	blurImage[y][x] >> 8) & 0xFF, // green channel
+				(	blurImage[y][x] >> 16) & 0xFF, // red channel
 			};
 			outfile.write((const char*)pixel, 3);
 		}
@@ -196,7 +197,6 @@ void Mandlebrot::compute_mandelbrot_with_AMP_tiling(float left, float right, flo
 	const int TS = 8;	// This will be how many threads run per tile, if 1D = 8, if 2D = 8x8 = 64, 3D 8x8x8 = 512 threads / tile
 
 	std::vector<unsigned int> colPalette = palette.createPalette();
-
 	uint32_t* pImageIn = &(image[0][0]);
 
 	array_view<uint32_t, 2> arrView(HEIGHT, WIDTH, pImageIn);
@@ -273,7 +273,7 @@ void Mandlebrot::compute_mandelbrot_with_AMP_tiling(float left, float right, flo
 				{
 					// z didn't escape from the circle.
 					// This point is in the Mandelbrot set.
-					//tileValues[y][x] = 0x000000; // black
+					// tileValues[y][x] = 0x000000; // black
 					arrView[t_idx] = 0x000000; // black
 					//arrView[t_idx] = tileValues[y][x];
 				}
@@ -298,71 +298,71 @@ void Mandlebrot::compute_mandelbrot_with_AMP_tiling(float left, float right, flo
 
 	// ################################# END MANDLEBROT AND START BLUR #################################
 
-	//// Pointer to a new empty container ready to store the blurred mandlebrot image.
-	//uint32_t* pImageOut = &(blurImage[0][0]);
+	// Pointer to a new empty container ready to store the blurred mandlebrot image.
+	uint32_t* pImageOut = &(blurImage[0][0]);
 
-	//// For blur
-	//Filter wrapper;
-	//// The original source image file has now been populated with the mandlebrot fractle
-	//array_view<uint32_t, 2> arrViewIn(HEIGHT, WIDTH, pImageIn);
-	//array_view<uint32_t, 2> arrViewOut(HEIGHT, WIDTH, pImageOut);
+	// For blur
+	Filter wrapper;
+	// The original source image file has now been populated with the mandlebrot fractle
+	array_view<uint32_t, 2> arrViewIn(HEIGHT, WIDTH, pImageIn);
+	array_view<uint32_t, 2> arrViewOut(HEIGHT, WIDTH, pImageOut);
 
-	//// PUT THIS IN A TRY CATCH ALSO!
-	//// HORIZONTAL BLUR
-	//parallel_for_each(arrViewIn.extent.tile<WIDTH, 1>(), [=](tiled_index<WIDTH, 1> t_idx) restrict(amp)
-	//	{
-	//		index<2> idx = t_idx.global;
-	//		
-	//		tile_static float horizontal_points[WIDTH];
-	//		horizontal_points[idx[0]] = arrViewIn[idx];
+	// PUT THIS IN A TRY CATCH ALSO!
+	// HORIZONTAL BLUR
+	parallel_for_each(arrViewIn.extent.tile<WIDTH, 1>(), [=](tiled_index<WIDTH, 1> t_idx) restrict(amp)
+		{
+			index<2> idx = t_idx.global;
+			
+			tile_static float horizontal_points[WIDTH];
+			horizontal_points[idx[0]] = arrViewIn[idx];
 
-	//		t_idx.barrier.wait();
+			t_idx.barrier.wait();
 
-	//		// KERNEL_SIZE is the size of the filter matrix, (7x7) or (7x1)
-	//		// Whatever pixel we're at minus 3.
-	//		int textureLocationX = idx[0] - (KERNEL_SIZE / 2);
+			// KERNEL_SIZE is the size of the filter matrix, (7x7) or (7x1)
+			// Whatever pixel we're at minus 3.
+			int textureLocationX = idx[0] - (KERNEL_SIZE / 2);
 
-	//		float pixelBlur = 0.0;
+			float pixelBlur = 0.0;
 
-	//		for (int i = 0; i < KERNEL_SIZE; ++i)
-	//		{
-	//			pixelBlur += horizontal_points[textureLocationX + i] * wrapper.filter[i];
-	//			t_idx.barrier.wait();
-	//			arrViewOut[idx] = pixelBlur;
-	//		}
-	//	});
+			for (int i = 0; i < KERNEL_SIZE; ++i)
+			{
+				pixelBlur += horizontal_points[textureLocationX + i] * wrapper.filter[i];
+				t_idx.barrier.wait();
+				arrViewOut[idx] = pixelBlur;
+			}
+		});
 
-	//arrViewOut.synchronize();
+	arrViewOut.synchronize();
 
-	////// Swap and then process the vertical strips next
-	//std::swap(arrViewIn, arrViewOut);
+	//// Swap and then process the vertical strips next
+	std::swap(arrViewIn, arrViewOut);
 
-	//// PUT THIS IN A TRY CATCH ALSO!
-	//// VERTICAL BLUR
-	//// Our arrViewIn is now the half blurred image, only blurred in horizontal.
-	//parallel_for_each(arrViewIn.extent.tile<1, HEIGHT>(), [=](tiled_index<1, HEIGHT> t_idx) restrict(amp)
-	//	{
-	//		index<2> idx = t_idx.global;
-	//	
-	//		tile_static float vertical_points[HEIGHT];
-	//		vertical_points[idx[1]] = arrViewIn[idx];
+	// PUT THIS IN A TRY CATCH ALSO!
+	// VERTICAL BLUR
+	// Our arrViewIn is now the half blurred image, only blurred in horizontal.
+	parallel_for_each(arrViewIn.extent.tile<1, HEIGHT>(), [=](tiled_index<1, HEIGHT> t_idx) restrict(amp)
+		{
+			index<2> idx = t_idx.global;
+		
+			tile_static float vertical_points[HEIGHT];
+			vertical_points[idx[1]] = arrViewIn[idx];
 
-	//		t_idx.barrier.wait();
+			t_idx.barrier.wait();
 
-	//		int textureLocationY = idx[1] - (KERNEL_SIZE / 2);
+			int textureLocationY = idx[1] - (KERNEL_SIZE / 2);
 
-	//		float pixelBlur = 0.0;
+			float pixelBlur = 0.0;
 
-	//		for (int i = 0; i < KERNEL_SIZE; ++i)
-	//		{
-	//			pixelBlur += vertical_points[textureLocationY + i] * wrapper.filter[i];
-	//			t_idx.barrier.wait();
-	//			arrViewOut[idx] = pixelBlur;
-	//		}
-	//	});
+			for (int i = 0; i < KERNEL_SIZE; ++i)
+			{
+				pixelBlur += vertical_points[textureLocationY + i] * wrapper.filter[i];
+				t_idx.barrier.wait();
+				arrViewOut[idx] = pixelBlur;
+			}
+		});
 
-	////The final sync which should now sync the fully blurred image back to the CPU.
-	//arrViewOut.synchronize();
+	//The final sync which should now sync the fully blurred image back to the CPU.
+	arrViewOut.synchronize();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////

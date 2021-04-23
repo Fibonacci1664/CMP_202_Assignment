@@ -17,7 +17,7 @@ ColourPalette::~ColourPalette()
 
 // FUNCTIONS
 
-// // Create a gradient of colours, useD to remove the colour banding in the mandlebrot.
+// Create a gradient of colours, useD to remove the colour banding in the mandlebrot.
 // Input: ratio is between 0 to 1
 // Output: rgb color
 // Source: https://stackoverflow.com/questions/40629345/fill-array-dynamicly-with-gradient-color-c
@@ -65,6 +65,9 @@ std::vector<unsigned int> ColourPalette::createPalette()
 	return palette;
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////
+
+// GETTERS / SETTERS
 double ColourPalette::getColourPalSize()
 {
 	return colourPaletteSize;

@@ -147,7 +147,15 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="src\mandelbrot.cpp" />
+    <ClCompile Include="src\Mandlebrot.cpp" />
+    <ClCompile Include="src\ColourPalette.cpp" />
+    <ClCompile Include="src\Main.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\Mandlebrot.h" />
+    <ClInclude Include="src\ColourPalette.h" />
+    <ClInclude Include="src\Filter.h" />
+    <ClInclude Include="src\ComplexNum.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

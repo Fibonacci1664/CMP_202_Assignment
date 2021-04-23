@@ -1,0 +1,20 @@
+#pragma once
+#include <vector>
+
+/////////////////////////////////////////////////////////////////////////////////////////////
+
+class ColourPalette
+{
+public:
+	ColourPalette();
+	~ColourPalette();
+
+	unsigned int rgb(double ratio);
+	std::vector<unsigned int> createPalette();
+
+	double getColourPalSize();
+
+	double colourPaletteSize;
+};
+
+/////////////////////////////////////////////////////////////////////////////////////////////

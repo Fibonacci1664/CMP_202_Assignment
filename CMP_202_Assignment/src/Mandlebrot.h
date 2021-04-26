@@ -1,5 +1,5 @@
 #pragma once
-#include "ColourPalette.h"
+//#include "ColourPalette.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -11,10 +11,10 @@ const int HEIGHT = 1024;
 // (You may need to turn this up if you zoom further into the set.)
 // This number MUST be greater than colour palette size.
 // as we index the colour palette based on the iteration, otherwise you will get oob errors.
-// Alos keep this a multiple of the colour palette size.
+// Also keep this a multiple of the colour palette size.
 // If you zoom into an area of the mandlebrot you will need to increase the palette size for better resolution of image.
 // Good rule of thumb is to keep this and the palette size the same number.
-const int MAX_ITERATIONS = 400;
+const int MAX_ITERATIONS = 255;
 
 class Mandlebrot
 {
@@ -37,7 +37,7 @@ private:
 
 	void blur();
 
-	ColourPalette palette;
+	//ColourPalette palette;
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////////

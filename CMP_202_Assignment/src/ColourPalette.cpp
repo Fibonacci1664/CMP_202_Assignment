@@ -5,7 +5,7 @@
 // CONSTRUCTOR / DESTRUCTOR
 ColourPalette::ColourPalette()
 {
-	colourPaletteSize = 400;
+	colourPaletteSize = 255;
 }
 
 ColourPalette::~ColourPalette()

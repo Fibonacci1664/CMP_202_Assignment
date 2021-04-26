@@ -34,7 +34,7 @@ void runAMPWarmUp(Mandlebrot* mandle)
 void createMandlebrot(Mandlebrot* mandle)
 {
 	mandle->setUpCSV();
-	mandle->runMultipleTimingsExplicitTile();
+	mandle->runMultipleTimingsNoExplicitTile();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////

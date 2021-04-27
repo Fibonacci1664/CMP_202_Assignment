@@ -3,14 +3,22 @@
 
 /////////////////////////////////////////////////////////////////////////////////////////////
 
+struct Colour
+{
+	float red;
+	float green;
+	float blue;
+};
+
 class ColourPalette
 {
 public:
 	ColourPalette();
 	~ColourPalette();
 
-	unsigned int rgb(double ratio);
-	std::vector<unsigned int> createPalette();
+	Colour rgb(double ratio);
+	//std::vector<float> createPalette();
+	std::vector<Colour> createPalette();
 
 	double getColourPalSize();
 

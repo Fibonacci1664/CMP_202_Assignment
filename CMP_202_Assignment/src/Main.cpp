@@ -55,7 +55,7 @@ int main(int argc, char* argv[])
 	std::cout << "Please wait..." << '\n';
 
 	setUpAMP(&ampObj);
-	runAMPWarmUp(&mandlebrot);
+	//runAMPWarmUp(&mandlebrot);
 	createMandlebrot(&mandlebrot);
 
 	// Write the final image that was generated to file for viewing.

@@ -1,4 +1,5 @@
 #include "ColourPalette.h"
+#include <iostream>
 
 /////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -21,7 +22,7 @@ ColourPalette::~ColourPalette()
 // Input: ratio is between 0 to 1
 // Output: rgb color
 // Source: https://stackoverflow.com/questions/40629345/fill-array-dynamicly-with-gradient-color-c
-unsigned int ColourPalette::rgb(double ratio)
+Colour ColourPalette::rgb(double ratio)
 {
 	/*
 	 * We want to normalize ratio so that the entire spectrum is divided
@@ -46,21 +47,62 @@ unsigned int ColourPalette::rgb(double ratio)
 	case 5: red = 255;      grn = 0;        blu = 255 - x; break;//magenta
 	}
 
-	return red | (grn << 8) | (blu << 16);
+	Colour colour{};
+	colour.red = red;
+	colour.green = grn;
+	colour.blue = blu;
+
+	return colour;
+
+	//return red | (grn << 8) | (blu << 16);
+	//return (red << 16) | (grn << 8) | (blu);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////
 
-std::vector<unsigned int> ColourPalette::createPalette()
+std::vector<Colour> ColourPalette::createPalette()
 {
-	std::vector<unsigned int> palette;
+	//std::vector<unsigned int> palette;
+	std::vector<Colour> palette;
 
-	// A palette of 360 colours.
+	// A palette of 256 colours.
 	for (double i = 0; i < colourPaletteSize; ++i)
 	{
-		unsigned int col = rgb(i / colourPaletteSize);
+		Colour col = rgb(i / colourPaletteSize);
 		palette.push_back(col);
 	}
+
+	// Find max / min for nomalising the palette to range 0 - 1
+	/*int max = 0;
+	int min = INT_MAX;
+
+	for (int i = 0; i < palette.size(); ++i)
+	{
+		std::cout << "Palette value red at index " << i << ": " << palette[i].red << '\n';
+		std::cout << "Palette value green at index " << i << ": " << palette[i].green << '\n';
+		std::cout << "Palette value blue at index " << i << ": " << palette[i].blue << '\n';
+
+		if (palette[i].red > max)
+		{
+			max = palette[i].red;
+		}
+
+		if (palette[i].red < min)
+		{
+			min = palette[i].red;
+		}
+	}
+
+	std::cout << "Max palette value: " << max << '\n';
+	std::cout << "Min palette value: " << min << '\n';*/
+
+	// Normalise palette
+	/*for (int i = 0; i < palette.size(); ++i)
+	{
+		float norm = (palette[i] - min) / (max - min);
+		palette[i] = norm;
+		std::cout << "Palette value at index " << i << ": " << palette[i] << '\n';
+	}*/
 
 	return palette;
 }

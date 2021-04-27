@@ -88,6 +88,10 @@ void Mandlebrot::write_tga(const char* filename)
 					 blurImage[y][x] & 0xFF,			// blue channel
 					(blurImage[y][x] >> 8) & 0xFF,		// green channel
 					(blurImage[y][x] >> 16) & 0xFF,		// red channel
+
+					// image[y][x] & 0xFF,			// blue channel
+					//(image[y][x] >> 8) & 0xFF,		// green channel
+					//(image[y][x] >> 16) & 0xFF,		// red channel
 			};
 			outfile.write((const char*)pixel, 3);
 		}
@@ -110,6 +114,7 @@ void Mandlebrot::write_tga(const char* filename)
 void Mandlebrot::compute_mandelbrot_with_AMP(float left, float right, float top, float bottom, int yPosSt, int yPosEnd)
 {
 	//std::vector<unsigned int> colPalette = palette.createPalette();
+	std::vector<Colour> colPalette = palette.createPalette();
 
 	// Create a pointer that points to the same location as the first index of image data 2d array.
 	uint32_t* pImage = &(image[0][0]);
@@ -118,6 +123,7 @@ void Mandlebrot::compute_mandelbrot_with_AMP(float left, float right, float top,
 	// We could have created an extent object and passed that as the second param, in this case we have hard coded the value 2.
 	array_view<uint32_t, 2> arrView(HEIGHT, WIDTH, pImage);
 	//array_view<unsigned int, 1> paletteArrView(colPalette.size(), colPalette);
+	array_view<Colour, 1> paletteArrView(colPalette.size(), colPalette);
 	arrView.discard_data();
 
 	try
@@ -162,7 +168,7 @@ void Mandlebrot::compute_mandelbrot_with_AMP(float left, float right, float top,
 					++iterations;
 				}
 
-				if (iterations == MAX_ITERATIONS)
+				if (iterations == MAX_ITERATIONS - 1)
 				{
 					// z didn't escape from the circle.
 					// This point IS in the Mandelbrot set.
@@ -170,12 +176,23 @@ void Mandlebrot::compute_mandelbrot_with_AMP(float left, float right, float top,
 				}
 				else
 				{
-					int red = 255;
-					int green = 50;
-					int blue = 80;
-					int col = (red << 16) | (green << 8) | (blue);
+					/*int red = paletteArrView[iterations] * 255;
+					int green = paletteArrView[iterations] * 255;
+					int blue = paletteArrView[iterations] * 255;
+					int col = (red << 16) | (green << 8) | (blue);*/
 
-					arrView[idx] = (col * iterations) / MAX_ITERATIONS;
+					//arrView[idx] = (iterations) & 0x0000FF;
+					//int col = paletteArrView[iterations];
+					//float col = paletteArrView[iterations] * 255.0f;
+
+					int red = paletteArrView[iterations].red;
+					int green = paletteArrView[iterations].green;
+					int blue = paletteArrView[iterations].blue;
+
+					//int col = (red << 16) | (green << 8) | (blue);
+					int col = (blue << 16) | (green << 8) | (red);
+
+					arrView[idx] = col / 255;
 				}
 			});
 
@@ -186,15 +203,39 @@ void Mandlebrot::compute_mandelbrot_with_AMP(float left, float right, float top,
 		MessageBoxA(NULL, ex.what(), "Error with mandlebrot without explicit tiling", MB_ICONERROR);
 	}
 
-	// ################################# END MANDLEBROT AND START BLUR #################################
+	// Find max / min for nomalising the palette to range 0 - 1
+	//int max = 0;
+	//int min = INT_MAX;
 
-	// Pointer to a new empty container ready to store the blurred mandlebrot image.
+	//for (int y = 0; y < HEIGHT; ++y)
+	//{
+	//	for (int x = 0; x < WIDTH; ++x)
+	//	{
+	//		std::cout << "Pixel coord: " << "(" << x << ", " << y << ")" << ", Pixel colour value: " << image[x][y] << '\n';
+
+	//		if (image[x][y] > max)
+	//		{
+	//			max = image[x][y];
+	//		}
+
+	//		if (image[x][y] < min)
+	//		{
+	//			min = image[x][y];
+	//		}
+	//	}
+	//}
+
+	//std::cout << "Max image pixel value: " << max << '\n';
+	//std::cout << "Min image pixel value: " << min << '\n';
+
+	//// ################################# END MANDLEBROT AND START BLUR #################################
+
+	//// Pointer to a new empty container ready to store the blurred mandlebrot image.
 	uint32_t* pImageOut = &(blurImage[0][0]);
 
 	// For blur
 	Filter wrapper;
 	// The original source image file has now been populated with the mandlebrot fractle
-	//array_view<uint32_t, 2> arrViewIn(HEIGHT, WIDTH, pImageIn);
 	array_view<uint32_t, 2> arrViewOut(HEIGHT, WIDTH, pImageOut);
 
 	// PUT THIS IN A TRY CATCH ALSO!
@@ -208,8 +249,8 @@ void Mandlebrot::compute_mandelbrot_with_AMP(float left, float right, float top,
 
 			t_idx.barrier.wait();
 
-			// KERNEL_SIZE is the size of the filter matrix, (7x7) or (7x1)
-			// Whatever pixel we're at minus 3.
+			 /*KERNEL_SIZE is the size of the filter matrix, (7x7) or (7x1)
+			 Whatever pixel we're at minus 3.*/
 			int textureLocationX = idx[0] - (KERNEL_SIZE / 2);
 
 			float pixelBlur = 0.0;
@@ -217,14 +258,14 @@ void Mandlebrot::compute_mandelbrot_with_AMP(float left, float right, float top,
 			for (int i = 0; i < KERNEL_SIZE; ++i)
 			{
 				pixelBlur += horizontal_points[textureLocationX + i] * wrapper.filter[i];
-				t_idx.barrier.wait();
-				arrViewOut[idx] = pixelBlur;
 			}
+
+			t_idx.barrier.wait();
+			arrViewOut[idx] = pixelBlur;
 		});
 
 	arrViewOut.synchronize();
-
-	//// Swap and then process the vertical strips next
+	// Swap and then process the vertical strips next
 	std::swap(arrView, arrViewOut);
 
 	// PUT THIS IN A TRY CATCH ALSO!
@@ -246,9 +287,10 @@ void Mandlebrot::compute_mandelbrot_with_AMP(float left, float right, float top,
 			for (int i = 0; i < KERNEL_SIZE; ++i)
 			{
 				pixelBlur += vertical_points[textureLocationY + i] * wrapper.filter[i];
-				t_idx.barrier.wait();
-				arrViewOut[idx] = pixelBlur;
 			}
+
+			t_idx.barrier.wait();
+			arrViewOut[idx] = pixelBlur;
 		});
 
 	//The final sync which should now sync the fully blurred image back to the CPU.
@@ -419,7 +461,7 @@ void Mandlebrot::runMultipleTimingsNoExplicitTile()
 	std::cout << "\n#### NO EXPLICIT TILING ###\n";
 	timings << "No Explicit Tile,";		// Output to CSV.
 
-	while (counter < 25)
+	while (counter < 1)
 	{
 		// Start timing.
 		the_clock::time_point start = the_clock::now();

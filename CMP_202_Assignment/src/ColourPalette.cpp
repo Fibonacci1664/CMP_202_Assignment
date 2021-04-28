@@ -48,9 +48,9 @@ Colour ColourPalette::rgb(double ratio)
 	}
 
 	Colour colour{};
-	colour.red = red;
-	colour.green = grn;
-	colour.blue = blu;
+	colour.colChannel_1 = red;
+	colour.colChannel_2 = grn;
+	colour.colChannle_3 = blu;
 
 	return colour;
 }
@@ -67,30 +67,6 @@ std::vector<Colour> ColourPalette::createPalette()
 		Colour col = rgb(i / colourPaletteSize);
 		palette.push_back(col);
 	}
-
-	// Find max / min for nomalising the palette to range 0 - 1
-	/*int max = 0;
-	int min = INT_MAX;
-
-	for (int i = 0; i < palette.size(); ++i)
-	{
-		std::cout << "Palette value red at index " << i << ": " << palette[i].red << '\n';
-		std::cout << "Palette value green at index " << i << ": " << palette[i].green << '\n';
-		std::cout << "Palette value blue at index " << i << ": " << palette[i].blue << '\n';
-
-		if (palette[i].red > max)
-		{
-			max = palette[i].green;
-		}
-
-		if (palette[i].red < min)
-		{
-			min = palette[i].green;
-		}
-	}*/
-
-	/*std::cout << "Max palette value: " << max << '\n';
-	std::cout << "Min palette value: " << min << '\n';*/
 
 	return palette;
 }

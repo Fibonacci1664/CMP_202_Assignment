@@ -168,7 +168,7 @@ void Mandlebrot::compute_mandelbrot_with_AMP(float left, float right, float top,
 				// away from (0, 0), or we've iterated too many times.
 				int iterations = 0;
 				float escapeRadius = 2.0f;
-				
+
 
 				while (c_abs(z) < escapeRadius && iterations < MAX_ITERATIONS)
 				{
@@ -186,43 +186,7 @@ void Mandlebrot::compute_mandelbrot_with_AMP(float left, float right, float top,
 				}
 				else
 				{
-					/*int red = paletteArrView[iterations] * 255;
-					int green = paletteArrView[iterations] * 255;
-					int blue = paletteArrView[iterations] * 255;
-					int col = (red << 16) | (green << 8) | (blue);*/
-
-					//arrView[idx] = (iterations) & 0x0000FF;
-					//int col = paletteArrView[iterations];
-					//float col = paletteArrView[iterations] * 255.0f;
-
-					
-
-					//int col = (red << 16) | (green << 8) | (blue);
-					//int col = (blue << 16) | (green << 8) | (red);
-
-					int col = 0;
-
-					if (iterations < 43 || (iterations > 128 && iterations < 171))
-					{
-						col = paletteArrView[iterations].green;
-					}
-					else if ((iterations > 42 && iterations < 86) || (iterations > 170 && iterations < 214))
-					{
-						col = paletteArrView[iterations].red;
-					}
-					else if ((iterations > 85 && iterations < 129) || (iterations > 213 && iterations < 256))
-					{
-						col = paletteArrView[iterations].blue;
-					}
-
-					/*int red = paletteArrView[iterations].red;
-					int green = paletteArrView[iterations].green;
-					int blue = paletteArrView[iterations].blue;
-					int finalCol = red | green | blue;*/
-
-					//arrView[idx] = col / 255;
-					//arrView[idx] = paletteArrView[iterations].green;
-					arrView[idx] = col;
+					arrView[idx] = paletteArrView[iterations].colChannel_2;
 				}
 			});
 
@@ -235,31 +199,6 @@ void Mandlebrot::compute_mandelbrot_with_AMP(float left, float right, float top,
 
 	// Write the original image to file before further modifying it.
 	write_tga("original_image.tga", false);
-
-	// Find max / min for nomalising the palette to range 0 - 1
-	/*int max = 0;
-	int min = INT_MAX;
-
-	for (int y = 0; y < HEIGHT; ++y)
-	{
-		for (int x = 0; x < WIDTH; ++x)
-		{
-			std::cout << "Pixel coord: " << "(" << x << ", " << y << ")" << ", Pixel colour value: " << image[x][y] << '\n';
-
-			if (image[x][y] > max)
-			{
-				max = image[x][y];
-			}
-
-			if (image[x][y] < min)
-			{
-				min = image[x][y];
-			}
-		}
-	}
-
-	std::cout << "Max image pixel value: " << max << '\n';
-	std::cout << "Min image pixel value: " << min << '\n';*/
 
 	//// ################################# END MANDLEBROT AND START BLUR #################################
 

@@ -58,10 +58,6 @@ int main(int argc, char* argv[])
 	//runAMPWarmUp(&mandlebrot);
 	createMandlebrot(&mandlebrot);
 
-	// Write both images that were generated to file for viewing.
-	//mandlebrot.write_tga("original_image.tga", false);
-	//mandlebrot.write_tga("blurred_image.tga", true);
-
 	return 0;
 }
 

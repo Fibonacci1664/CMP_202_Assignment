@@ -5,9 +5,9 @@
 
 struct Colour
 {
-	float red;
-	float green;
-	float blue;
+	float colChannel_1;
+	float colChannel_2;
+	float colChannle_3;
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////////

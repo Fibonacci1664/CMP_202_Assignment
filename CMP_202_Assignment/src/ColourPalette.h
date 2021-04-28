@@ -10,6 +10,8 @@ struct Colour
 	float blue;
 };
 
+/////////////////////////////////////////////////////////////////////////////////////////////
+
 class ColourPalette
 {
 public:
@@ -17,7 +19,6 @@ public:
 	~ColourPalette();
 
 	Colour rgb(double ratio);
-	//std::vector<float> createPalette();
 	std::vector<Colour> createPalette();
 
 	double getColourPalSize();

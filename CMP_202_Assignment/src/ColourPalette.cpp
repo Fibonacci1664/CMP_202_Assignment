@@ -6,7 +6,7 @@
 // CONSTRUCTOR / DESTRUCTOR
 ColourPalette::ColourPalette()
 {
-	colourPaletteSize = 255;
+	colourPaletteSize = 256;
 }
 
 ColourPalette::~ColourPalette()
@@ -18,7 +18,7 @@ ColourPalette::~ColourPalette()
 
 // FUNCTIONS
 
-// Create a gradient of colours, useD to remove the colour banding in the mandlebrot.
+// Create a gradient of colours, used to remove the colour banding in the mandlebrot.
 // Input: ratio is between 0 to 1
 // Output: rgb color
 // Source: https://stackoverflow.com/questions/40629345/fill-array-dynamicly-with-gradient-color-c
@@ -53,16 +53,12 @@ Colour ColourPalette::rgb(double ratio)
 	colour.blue = blu;
 
 	return colour;
-
-	//return red | (grn << 8) | (blu << 16);
-	//return (red << 16) | (grn << 8) | (blu);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////
 
 std::vector<Colour> ColourPalette::createPalette()
 {
-	//std::vector<unsigned int> palette;
 	std::vector<Colour> palette;
 
 	// A palette of 256 colours.
@@ -84,25 +80,17 @@ std::vector<Colour> ColourPalette::createPalette()
 
 		if (palette[i].red > max)
 		{
-			max = palette[i].red;
+			max = palette[i].green;
 		}
 
 		if (palette[i].red < min)
 		{
-			min = palette[i].red;
+			min = palette[i].green;
 		}
-	}
-
-	std::cout << "Max palette value: " << max << '\n';
-	std::cout << "Min palette value: " << min << '\n';*/
-
-	// Normalise palette
-	/*for (int i = 0; i < palette.size(); ++i)
-	{
-		float norm = (palette[i] - min) / (max - min);
-		palette[i] = norm;
-		std::cout << "Palette value at index " << i << ": " << palette[i] << '\n';
 	}*/
+
+	/*std::cout << "Max palette value: " << max << '\n';
+	std::cout << "Min palette value: " << min << '\n';*/
 
 	return palette;
 }

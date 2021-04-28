@@ -14,7 +14,7 @@ const int HEIGHT = 1024;
 // Also keep this a multiple of the colour palette size.
 // If you zoom into an area of the mandlebrot you will need to increase the palette size for better resolution of image.
 // Good rule of thumb is to keep this and the palette size the same number.
-const int MAX_ITERATIONS = 255;
+const int MAX_ITERATIONS = 256;
 
 class Mandlebrot
 {
@@ -22,7 +22,7 @@ public:
 	Mandlebrot();
 	~Mandlebrot();
 
-	void write_tga(const char* filename);
+	void write_tga(const char* filename, bool blur);
 	void compute_mandelbrot_with_AMP(float left, float right, float top, float bottom, int yPosSt = 0, int yPosEnd = HEIGHT);
 	void compute_mandelbrot_with_AMP_tiling(float left, float right, float top, float bottom, int yPosSt = 0, int yPosEnd = HEIGHT);
 	void runMultipleTimingsNoExplicitTile();

@@ -61,7 +61,7 @@ Mandlebrot::~Mandlebrot()
 
 // Write the image to a TGA file with the given name.
 // Format specification: http://www.gamers.org/dEngine/quake3/TGA.txt
-void Mandlebrot::write_tga(const char* filename)
+void Mandlebrot::write_tga(const char* filename, bool blur)
 {
 	ofstream outfile(filename, ofstream::binary);
 
@@ -83,17 +83,26 @@ void Mandlebrot::write_tga(const char* filename)
 	{
 		for (int x = 0; x < WIDTH; ++x)
 		{
-			// Write the final blurred image to file.
-			uint8_t pixel[3] = {
-					 blurImage[y][x] & 0xFF,			// blue channel
-					(blurImage[y][x] >> 8) & 0xFF,		// green channel
-					(blurImage[y][x] >> 16) & 0xFF,		// red channel
-
-					// image[y][x] & 0xFF,			// blue channel
-					//(image[y][x] >> 8) & 0xFF,		// green channel
-					//(image[y][x] >> 16) & 0xFF,		// red channel
-			};
-			outfile.write((const char*)pixel, 3);
+			if (blur)
+			{
+				// Write the final blurred image to file.
+				uint8_t pixel[3] = {
+						 blurImage[y][x] & 0xFF,			// blue channel
+						(blurImage[y][x] >> 8) & 0xFF,		// green channel
+						(blurImage[y][x] >> 16) & 0xFF,		// red channel
+				};
+				outfile.write((const char*)pixel, 3);
+			}
+			else
+			{
+				// Write the original image to file.
+				uint8_t pixel[3] = {
+						 image[y][x] & 0xFF,			// blue channel
+						(image[y][x] >> 8) & 0xFF,		// green channel
+						(image[y][x] >> 16) & 0xFF,		// red channel
+				};
+				outfile.write((const char*)pixel, 3);
+			}
 		}
 	}
 
@@ -159,6 +168,7 @@ void Mandlebrot::compute_mandelbrot_with_AMP(float left, float right, float top,
 				// away from (0, 0), or we've iterated too many times.
 				int iterations = 0;
 				float escapeRadius = 2.0f;
+				
 
 				while (c_abs(z) < escapeRadius && iterations < MAX_ITERATIONS)
 				{
@@ -185,14 +195,34 @@ void Mandlebrot::compute_mandelbrot_with_AMP(float left, float right, float top,
 					//int col = paletteArrView[iterations];
 					//float col = paletteArrView[iterations] * 255.0f;
 
-					int red = paletteArrView[iterations].red;
-					int green = paletteArrView[iterations].green;
-					int blue = paletteArrView[iterations].blue;
+					
 
 					//int col = (red << 16) | (green << 8) | (blue);
-					int col = (blue << 16) | (green << 8) | (red);
+					//int col = (blue << 16) | (green << 8) | (red);
 
-					arrView[idx] = col / 255;
+					int col = 0;
+
+					if (iterations < 43 || (iterations > 128 && iterations < 171))
+					{
+						col = paletteArrView[iterations].green;
+					}
+					else if ((iterations > 42 && iterations < 86) || (iterations > 170 && iterations < 214))
+					{
+						col = paletteArrView[iterations].red;
+					}
+					else if ((iterations > 85 && iterations < 129) || (iterations > 213 && iterations < 256))
+					{
+						col = paletteArrView[iterations].blue;
+					}
+
+					/*int red = paletteArrView[iterations].red;
+					int green = paletteArrView[iterations].green;
+					int blue = paletteArrView[iterations].blue;
+					int finalCol = red | green | blue;*/
+
+					//arrView[idx] = col / 255;
+					//arrView[idx] = paletteArrView[iterations].green;
+					arrView[idx] = col;
 				}
 			});
 
@@ -203,30 +233,33 @@ void Mandlebrot::compute_mandelbrot_with_AMP(float left, float right, float top,
 		MessageBoxA(NULL, ex.what(), "Error with mandlebrot without explicit tiling", MB_ICONERROR);
 	}
 
+	// Write the original image to file before further modifying it.
+	write_tga("original_image.tga", false);
+
 	// Find max / min for nomalising the palette to range 0 - 1
-	//int max = 0;
-	//int min = INT_MAX;
+	/*int max = 0;
+	int min = INT_MAX;
 
-	//for (int y = 0; y < HEIGHT; ++y)
-	//{
-	//	for (int x = 0; x < WIDTH; ++x)
-	//	{
-	//		std::cout << "Pixel coord: " << "(" << x << ", " << y << ")" << ", Pixel colour value: " << image[x][y] << '\n';
+	for (int y = 0; y < HEIGHT; ++y)
+	{
+		for (int x = 0; x < WIDTH; ++x)
+		{
+			std::cout << "Pixel coord: " << "(" << x << ", " << y << ")" << ", Pixel colour value: " << image[x][y] << '\n';
 
-	//		if (image[x][y] > max)
-	//		{
-	//			max = image[x][y];
-	//		}
+			if (image[x][y] > max)
+			{
+				max = image[x][y];
+			}
 
-	//		if (image[x][y] < min)
-	//		{
-	//			min = image[x][y];
-	//		}
-	//	}
-	//}
+			if (image[x][y] < min)
+			{
+				min = image[x][y];
+			}
+		}
+	}
 
-	//std::cout << "Max image pixel value: " << max << '\n';
-	//std::cout << "Min image pixel value: " << min << '\n';
+	std::cout << "Max image pixel value: " << max << '\n';
+	std::cout << "Min image pixel value: " << min << '\n';*/
 
 	//// ################################# END MANDLEBROT AND START BLUR #################################
 
@@ -265,7 +298,8 @@ void Mandlebrot::compute_mandelbrot_with_AMP(float left, float right, float top,
 		});
 
 	arrViewOut.synchronize();
-	// Swap and then process the vertical strips next
+
+	//Swap and then process the vertical strips next
 	std::swap(arrView, arrViewOut);
 
 	// PUT THIS IN A TRY CATCH ALSO!
@@ -295,6 +329,9 @@ void Mandlebrot::compute_mandelbrot_with_AMP(float left, float right, float top,
 
 	//The final sync which should now sync the fully blurred image back to the CPU.
 	arrViewOut.synchronize();
+
+	// Write the final blurred image to file.
+	write_tga("blurred_image.tga", true);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////

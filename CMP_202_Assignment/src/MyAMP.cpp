@@ -90,8 +90,6 @@ void MyAMP::printAccelInUse()
 	std::wcout << "\nUsing default acc = " << accelView.accelerator.description << '\n';
 
 	std::cout << "\n##############################################################\n";
-
-	cout << "Please wait..." << endl;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////

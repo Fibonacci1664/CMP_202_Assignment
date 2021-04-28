@@ -20,7 +20,6 @@ public:
 
 	Colour rgb(double ratio);
 	std::vector<Colour> createPalette();
-
 	double getColourPalSize();
 
 	double colourPaletteSize;

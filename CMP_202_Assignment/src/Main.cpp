@@ -25,8 +25,7 @@
 ////////////////////// IMPORTANT INFO RELATED TO THE WARM UP CALLS BELOW /////////////////////
 void runAMPWarmUp(Mandlebrot* mandle)
 {
-	mandle->compute_mandelbrot_with_AMP(-2.0, 1.0, 1.125, -1.125, 0, mandle->getHeight());
-	mandle->compute_mandelbrot_with_AMP_tiling(-2.0, 1.0, 1.125, -1.125, 0, mandle->getHeight());
+	mandle->compute_mandelbrot_with_AMP(-2.0, 1.0, 1.125, -1.125, 0, HEIGHT);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////
@@ -34,7 +33,7 @@ void runAMPWarmUp(Mandlebrot* mandle)
 void createMandlebrot(Mandlebrot* mandle)
 {
 	mandle->setUpCSV();
-	mandle->runMultipleTimingsNoExplicitTile();
+	mandle->runMultipleTimings();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////
@@ -47,15 +46,35 @@ void setUpAMP(MyAMP* theAMP)
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
+void imagePrefs(int& size)
+{
+	std::cout << "Please enter size of image to generate, (256 - 1024):> ";
+	std::cin >> size;
+
+	while (size < 256 || size > 1024)
+	{
+		std::cout << "Please enter size of image to generate, (256 - 1024):> ";
+		std::cin >> size;
+	}
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////
+
 int main(int argc, char* argv[])
 {
-	Mandlebrot mandlebrot;
 	MyAMP ampObj;
+	int size = 0;
 
-	std::cout << "Please wait..." << '\n';
+	//imagePrefs(size);
+
+	//Mandlebrot mandlebrot(size);
+	Mandlebrot mandlebrot;
 
 	setUpAMP(&ampObj);
-	//runAMPWarmUp(&mandlebrot);
+	runAMPWarmUp(&mandlebrot);
+
+	std::cout << "Please wait while the image is generated..." << '\n';
+
 	createMandlebrot(&mandlebrot);
 
 	return 0;

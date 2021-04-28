@@ -16,17 +16,26 @@ const int HEIGHT = 1024;
 // Good rule of thumb is to keep this and the palette size the same number.
 const int MAX_ITERATIONS = 256;
 
+//struct constDimension
+//{
+//	const int WIDTH;
+//	const int HEIGHT;
+//
+//	constDimension(int width, int height) : WIDTH(width), HEIGHT(height) {}
+//};
+
 class Mandlebrot
 {
 public:
+	//Mandlebrot(int SIZE);
 	Mandlebrot();
 	~Mandlebrot();
 
+	void initImageContainers(int SIZE);
 	void write_tga(const char* filename, bool blur);
-	void compute_mandelbrot_with_AMP(float left, float right, float top, float bottom, int yPosSt = 0, int yPosEnd = HEIGHT);
-	void compute_mandelbrot_with_AMP_tiling(float left, float right, float top, float bottom, int yPosSt = 0, int yPosEnd = HEIGHT);
-	void runMultipleTimingsNoExplicitTile();
-	void runMultipleTimingsExplicitTile();
+	void compute_mandelbrot_with_AMP(float left, float right, float top, float bottom, int yPosSt = 0, int yPosEnd = HEIGHT, bool blur = false);
+	void applyBlur(uint32_t* inputImage);
+	void runMultipleTimings();
 	void setUpCSV();
 
 	// GETTERS / SETTERS
@@ -35,7 +44,15 @@ public:
 
 private:
 
-	void blur();
+	/*uint32_t** image;
+	uint32_t** blurImage;*/
+
+	/*std::vector<std::vector<uint32_t>> image;
+	std::vector<std::vector<uint32_t>> blurImage;
+
+	int size;
+	int WIDTH;
+	int HEIGHT;*/
 
 	ColourPalette palette;
 };

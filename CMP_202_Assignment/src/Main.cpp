@@ -25,7 +25,7 @@
 ////////////////////// IMPORTANT INFO RELATED TO THE WARM UP CALLS BELOW /////////////////////
 void runAMPWarmUp(Mandlebrot* mandle)
 {
-	mandle->compute_mandelbrot_with_AMP(-2.0, 1.0, 1.125, -1.125, 0, HEIGHT);
+	mandle->compute_mandelbrot_with_AMP(-2.0, 1.0, 1.125, -1.125, 0, HEIGHT, true);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////
@@ -59,6 +59,15 @@ void imagePrefs(int& size)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////
+
+// ######################### NOTE #########################
+
+/*
+ * The WIDTH and HEIGHT of the image can found and changed
+ * in the Mandlebrot.h file.
+ */
+
+ // ######################### NOTE #########################
 
 int main(int argc, char* argv[])
 {

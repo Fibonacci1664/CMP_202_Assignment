@@ -50,7 +50,7 @@ Colour ColourPalette::rgb(double ratio)
 	Colour colour{};
 	colour.colChannel_1 = red;
 	colour.colChannel_2 = grn;
-	colour.colChannle_3 = blu;
+	colour.colChannel_3 = blu;
 
 	return colour;
 }

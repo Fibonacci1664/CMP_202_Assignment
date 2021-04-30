@@ -33,7 +33,7 @@ using namespace concurrency;
 /////////////////////////////////////////////////////////////////////////////////////////////
 
 // GLOBALS
-std::ofstream timings("timings.csv");
+std::ofstream timings("size_1024x_timings.csv");
 uint32_t image[HEIGHT][WIDTH];
 uint32_t blurImage[HEIGHT][WIDTH];
 
@@ -159,7 +159,7 @@ void Mandlebrot::write_tga(const char* filename, bool blur)
 // Render the Mandelbrot set into the image array.
 // The parameters specify the region on the complex plane to plot.
 // This will render the mandlebrot using C++ AMP without tiling explicitly.
-void Mandlebrot::compute_mandelbrot_with_AMP(float left, float right, float top, float bottom, int yPosSt, int yPosEnd, bool blur)
+void Mandlebrot::compute_mandelbrot_with_AMP(float left, float right, float top, float bottom, int yPosSt, int yPosEnd, bool blur, bool writeImage)
 {
 	//std::vector<unsigned int> colPalette = palette.createPalette();
 	std::vector<Colour> colPalette = palette.createPalette();
@@ -176,7 +176,7 @@ void Mandlebrot::compute_mandelbrot_with_AMP(float left, float right, float top,
 
 	try
 	{
-		parallel_for_each(arrView.extent, [=](concurrency::index<2> idx) restrict(amp)
+		parallel_for_each(arrView.extent, [=](index<2> idx) restrict(amp)
 			{
 				/* compute Mandelbrot here i.e. Mandelbrot kernel/shader */
 
@@ -208,7 +208,6 @@ void Mandlebrot::compute_mandelbrot_with_AMP(float left, float right, float top,
 				int iterations = 0;
 				float escapeRadius = 2.0f;
 
-
 				while (c_abs(z) < escapeRadius && iterations < MAX_ITERATIONS)
 				{
 					z = c_mul(z, z);
@@ -225,7 +224,14 @@ void Mandlebrot::compute_mandelbrot_with_AMP(float left, float right, float top,
 				}
 				else
 				{
-					arrView[idx] = paletteArrView[iterations].colChannel_2;
+					int red = paletteArrView[iterations].colChannel_1;
+					int green = paletteArrView[iterations].colChannel_2;
+					int blue = paletteArrView[iterations].colChannel_3;
+
+					int finalCol = (red << 16) | (green << 8) | (blue);
+
+					arrView[idx] = finalCol;
+					//arrView[idx] = paletteArrView[iterations].colChannel_2;
 				}
 			});
 
@@ -236,18 +242,22 @@ void Mandlebrot::compute_mandelbrot_with_AMP(float left, float right, float top,
 		MessageBoxA(NULL, ex.what(), "Error with mandlebrot without explicit tiling", MB_ICONERROR);
 	}
 
-	// Write the original image to file before further modifying it.
-	write_tga("original_image.tga", false);
+	// Write image to file by default unless the user passes false as the arg.
+	if (writeImage)
+	{
+		// Write the original image to file before further modifying it.
+		write_tga("original_image.tga", false);
+	}
 
 	if (blur)
 	{
-		applyBlur(pImage);
+		applyBlur(pImage, writeImage);
 	}
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////
 
-void Mandlebrot::applyBlur(uint32_t* inputImage)
+void Mandlebrot::applyBlur(uint32_t* inputImage, bool writeImage)
 {
 	// Pointer to a new empty container ready to store the blurred mandlebrot image.
 	uint32_t* pImageOut = &(blurImage[0][0]);
@@ -330,9 +340,11 @@ void Mandlebrot::applyBlur(uint32_t* inputImage)
 		MessageBoxA(NULL, ex.what(), "Error with applying vertical blur effect.", MB_ICONERROR);
 	}
 	
-
-	// Write the final blurred image to file.
-	write_tga("blurred_image.tga", true);
+	if (writeImage)
+	{
+		// Write the final blurred image to file.
+		write_tga("blurred_image.tga", true);
+	}
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////
@@ -345,9 +357,9 @@ void Mandlebrot::applyBlur(uint32_t* inputImage)
 void Mandlebrot::runMultipleTimings()
 {
 	int counter = 0;
-	timings << "No Explicit Tile,";		// Output to CSV.
+	timings << "Image Size: " << WIDTH << "x,";		// Output to CSV.
 
-	while (counter < 1)
+	while (counter < 25)
 	{
 		// Start timing.
 		the_clock::time_point start = the_clock::now();

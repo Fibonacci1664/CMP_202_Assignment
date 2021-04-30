@@ -33,8 +33,8 @@ public:
 
 	void initImageContainers(int SIZE);
 	void write_tga(const char* filename, bool blur);
-	void compute_mandelbrot_with_AMP(float left, float right, float top, float bottom, int yPosSt = 0, int yPosEnd = HEIGHT, bool blur = false);
-	void applyBlur(uint32_t* inputImage);
+	void compute_mandelbrot_with_AMP(float left, float right, float top, float bottom, int yPosSt = 0, int yPosEnd = HEIGHT, bool blur = false, bool writeImage = true);
+	void applyBlur(uint32_t* inputImage, bool writeImage);
 	void runMultipleTimings();
 	void setUpCSV();
 
